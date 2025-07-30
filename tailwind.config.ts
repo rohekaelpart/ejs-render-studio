@@ -61,7 +61,22 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				editor: {
+					bg: 'hsl(var(--editor-bg))',
+					border: 'hsl(var(--editor-border))',
+					panel: 'hsl(var(--panel-bg))',
+					code: 'hsl(var(--code-bg))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-accent': 'var(--gradient-accent)',
+				'gradient-subtle': 'var(--gradient-subtle)'
+			},
+			boxShadow: {
+				'glow': 'var(--shadow-glow)',
+				'panel': 'var(--shadow-panel)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
