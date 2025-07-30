@@ -2,13 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Eye, Code2, Play } from 'lucide-react';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Copy, Eye, Code2, Play, Github } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as ejs from 'ejs';
 import Editor from '@monaco-editor/react';
 
-const EjsEditor = () => {
-  const [jsonData, setJsonData] = useState(`{
+// LocalStorage keys
+const STORAGE_KEYS = {
+  JSON_DATA: 'ejsEditor_jsonData',
+  EJS_TEMPLATE: 'ejsEditor_ejsTemplate',
+};
+
+// Default values
+const DEFAULT_JSON_DATA = `{
   "title": "Welcome to EJS Editor",
   "subtitle": "A powerful template engine",
   "users": [
@@ -17,9 +24,9 @@ const EjsEditor = () => {
     { "name": "Charlie", "age": 35 }
   ],
   "features": ["Dynamic content", "Loops & conditionals", "Partials support"]
-}`);
+}`;
 
-  const [ejsTemplate, setEjsTemplate] = useState(`<div class="container">
+const DEFAULT_EJS_TEMPLATE = `<div class="container">
   <header>
     <h1><%= title %></h1>
     <p class="subtitle"><%= subtitle %></p>
@@ -64,12 +71,49 @@ const EjsEditor = () => {
   .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
   .senior { background: #4CAF50; color: white; }
   .junior { background: #2196F3; color: white; }
-</style>`);
+</style>`;
+
+// Helper functions for localStorage
+const loadFromStorage = (key: string, defaultValue: string): string => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved !== null ? saved : defaultValue;
+  } catch (error) {
+    console.warn(`Failed to load from localStorage: ${key}`, error);
+    return defaultValue;
+  }
+};
+
+const saveToStorage = (key: string, value: string): void => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Failed to save to localStorage: ${key}`, error);
+  }
+};
+
+const EjsEditor = () => {
+  const [jsonData, setJsonData] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.JSON_DATA, DEFAULT_JSON_DATA)
+  );
+
+  const [ejsTemplate, setEjsTemplate] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.EJS_TEMPLATE, DEFAULT_EJS_TEMPLATE)
+  );
 
   const [renderedHtml, setRenderedHtml] = useState('');
   const [error, setError] = useState('');
   const [outputMode, setOutputMode] = useState<'preview' | 'code'>('preview');
   const { toast } = useToast();
+
+  // Save to localStorage whenever jsonData or ejsTemplate changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.JSON_DATA, jsonData);
+  }, [jsonData]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.EJS_TEMPLATE, ejsTemplate);
+  }, [ejsTemplate]);
 
   const renderTemplate = () => {
     try {
@@ -109,174 +153,184 @@ const EjsEditor = () => {
       <div className="bg-gradient-primary p-4 shadow-panel">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-black/20 rounded-lg">
-              <Code2 className="w-6 h-6 text-white" />
+            <div className="p-2 bg-rose-600 rounded-lg">
+              <Code2 className="w-4 h-4 text-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">EJS HTML Editor</h1>
-              <p className="text-white/80 text-sm">Live template rendering with syntax highlighting</p>
+              <h1 className="text-md font-bold text-white">EJS HTML Editor</h1>
             </div>
           </div>
-          <Button 
-            variant="copy" 
-            size="sm"
-            onClick={renderTemplate}
-            className="bg-white/20 hover:bg-white/30"
-          >
-            <Play className="w-4 h-4" />
-            Render
-          </Button>
+          <div className="flex items-center gap-3">
+            <p className="italic text-sm">All changes saved locally.</p>
+            <a href="https://github.com/rohekaelpart/ejs-render-studio" target="_blank" rel="noopener noreferrer" className="hover:text-rose-600">
+              <Github className="w-4 h-4 text-muted-foreground" />
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex h-[calc(100vh-88px)] gap-1">
-        {/* Left Panel - Inputs */}
-        <div className="flex-1 flex flex-col gap-1">
-          {/* JSON Data Input */}
-          <Card className="flex-1 bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
-            <div className="flex items-center justify-between p-3 border-b border-editor-border">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <div className="w-3 h-3 bg-accent rounded-full"></div>
-                Input Data (JSON)
-              </h3>
-              <Button 
-                variant="copy" 
-                size="xs"
-                onClick={() => copyToClipboard(jsonData, 'JSON data')}
-              >
-                <Copy className="w-3 h-3" />
-                Copy
-              </Button>
-            </div>
-            <div className="flex-1 relative">
-              <Editor
-                height="100%"
-                language="json"
-                value={jsonData}
-                onChange={(value) => setJsonData(value || '')}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  roundedSelection: false,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  wordWrap: 'on',
-                }}
-              />
-            </div>
-          </Card>
-
-          {/* EJS Template Input */}
-          <Card className="flex-1 bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
-            <div className="flex items-center justify-between p-3 border-b border-editor-border">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                EJS Template
-              </h3>
-              <Button 
-                variant="copy" 
-                size="xs"
-                onClick={() => copyToClipboard(ejsTemplate, 'EJS template')}
-              >
-                <Copy className="w-3 h-3" />
-                Copy
-              </Button>
-            </div>
-            <div className="flex-1 relative">
-              <Editor
-                height="100%"
-                language="html"
-                value={ejsTemplate}
-                onChange={(value) => setEjsTemplate(value || '')}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  roundedSelection: false,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  wordWrap: 'on',
-                }}
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Panel - Output */}
-        <Card className="flex-1 bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
-          <div className="flex items-center justify-between p-3 border-b border-editor-border">
-            <div className="flex items-center gap-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                Output
-              </h3>
-              <Tabs value={outputMode} onValueChange={(value) => setOutputMode(value as 'preview' | 'code')}>
-                <TabsList className="bg-secondary/50">
-                  <TabsTrigger value="preview" className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    Preview
-                  </TabsTrigger>
-                  <TabsTrigger value="code" className="flex items-center gap-1">
-                    <Code2 className="w-3 h-3" />
-                    HTML
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            <Button 
-              variant="copy" 
-              size="xs"
-              onClick={() => copyToClipboard(renderedHtml, 'Rendered HTML')}
-              disabled={!renderedHtml}
-            >
-              <Copy className="w-3 h-3" />
-              Copy
-            </Button>
-          </div>
-          
-          <div className="flex-1 relative overflow-hidden">
-            {error ? (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 m-2 rounded-lg">
-                <h4 className="font-semibold text-destructive mb-2">Error</h4>
-                <pre className="text-sm text-destructive/80 whitespace-pre-wrap">{error}</pre>
-              </div>
-            ) : (
-              <Tabs value={outputMode} className="h-full flex flex-col">
-                <TabsContent value="preview" className="flex-1 m-0">
-                  <div className="h-full bg-white overflow-auto">
-                    <iframe
-                      srcDoc={renderedHtml}
-                      className="w-full h-full border-0"
-                      title="EJS Output Preview"
+      {/* Main Content with Resizable Panels */}
+      <div className="h-[calc(100vh-88px)]">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          {/* Left Panel Group - JSON Data and EJS Template */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <ResizablePanelGroup direction="vertical" className="h-full">
+              {/* JSON Data Input */}
+              <ResizablePanel defaultSize={50} minSize={20}>
+                <Card className="h-full bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
+                  <div className="flex items-center justify-between p-3 border-b border-editor-border">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <div className="w-3 h-3 bg-accent rounded-full"></div>
+                      Input Data (JSON)
+                    </h3>
+                    <Button 
+                      variant="copy" 
+                      size="xs"
+                      onClick={() => copyToClipboard(jsonData, 'JSON data')}
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </Button>
+                  </div>
+                  <div className="flex-1 relative">
+                    <Editor
+                      height="100%"
+                      language="json"
+                      value={jsonData}
+                      onChange={(value) => setJsonData(value || '')}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        roundedSelection: false,
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        wordWrap: 'on',
+                      }}
                     />
                   </div>
-                </TabsContent>
-                <TabsContent value="code" className="flex-1 m-0">
-                  <Editor
-                    height="100%"
-                    language="html"
-                    value={renderedHtml}
-                    theme="vs-dark"
-                    options={{
-                      readOnly: true,
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      lineNumbers: 'on',
-                      roundedSelection: false,
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      wordWrap: 'on',
-                    }}
-                  />
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </Card>
+                </Card>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* EJS Template Input */}
+              <ResizablePanel defaultSize={50} minSize={20}>
+                <Card className="h-full bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
+                  <div className="flex items-center justify-between p-3 border-b border-editor-border">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <div className="w-3 h-3 bg-primary rounded-full"></div>
+                      EJS Template
+                    </h3>
+                    <Button 
+                      variant="copy" 
+                      size="xs"
+                      onClick={() => copyToClipboard(ejsTemplate, 'EJS template')}
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </Button>
+                  </div>
+                  <div className="flex-1 relative">
+                    <Editor
+                      height="100%"
+                      language="html"
+                      value={ejsTemplate}
+                      onChange={(value) => setEjsTemplate(value || '')}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        roundedSelection: false,
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        wordWrap: 'on',
+                      }}
+                    />
+                  </div>
+                </Card>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Right Panel - Output */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <Card className="h-full bg-editor-bg border-editor-border shadow-panel flex flex-col m-1">
+              <div className="flex items-center justify-between p-3 border-b border-editor-border">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    Output
+                  </h3>
+                  <Tabs value={outputMode} onValueChange={(value) => setOutputMode(value as 'preview' | 'code')}>
+                    <TabsList className="bg-secondary/50">
+                      <TabsTrigger value="preview" className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        Preview
+                      </TabsTrigger>
+                      <TabsTrigger value="code" className="flex items-center gap-1">
+                        <Code2 className="w-3 h-3" />
+                        HTML
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <Button 
+                  variant="copy" 
+                  size="xs"
+                  onClick={() => copyToClipboard(renderedHtml, 'Rendered HTML')}
+                  disabled={!renderedHtml}
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy
+                </Button>
+              </div>
+              
+              <div className="flex-1 relative overflow-hidden">
+                {error ? (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 m-2 rounded-lg">
+                    <h4 className="font-semibold text-destructive mb-2">Error</h4>
+                    <pre className="text-sm text-destructive/80 whitespace-pre-wrap">{error}</pre>
+                  </div>
+                ) : (
+                  <Tabs value={outputMode} className="h-full flex flex-col">
+                    <TabsContent value="preview" className="flex-1 m-0">
+                      <div className="h-full bg-white overflow-auto">
+                        <iframe
+                          srcDoc={renderedHtml}
+                          className="w-full h-full border-0"
+                          title="EJS Output Preview"
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="code" className="flex-1 m-0">
+                      <Editor
+                        height="100%"
+                        language="html"
+                        value={renderedHtml}
+                        theme="vs-dark"
+                        options={{
+                          readOnly: true,
+                          minimap: { enabled: false },
+                          fontSize: 14,
+                          lineNumbers: 'on',
+                          roundedSelection: false,
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                          wordWrap: 'on',
+                        }}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                )}
+              </div>
+            </Card>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );
