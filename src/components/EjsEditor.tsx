@@ -121,36 +121,11 @@ const EjsEditor = () => {
     saveToStorage(STORAGE_KEYS.EJS_TEMPLATE, ejsTemplate);
   }, [ejsTemplate]);
 
-  // Helper function to strip TypeScript type annotations
-  const stripTypeAnnotations = (code: string): string => {
-    // Remove type annotations like `: Type` from variable declarations
-    return code.replace(/:\s*[A-Za-z_$][A-Za-z0-9_$]*(\[\]|\<[^>]*\>)*(?=\s*=)/g, '');
-  };
-
   const renderTemplate = () => {
     try {
-      // Handle both cases: const input = {...} and const input: Type = {...}
-      let data;
-      
-      // Strip TypeScript type annotations to make it valid JavaScript
-      const jsCode = stripTypeAnnotations(jsData);
-      
-      // First try to execute the code and extract 'input' variable
-      try {
-        const func = new Function(`${jsCode}; return typeof input !== 'undefined' ? input : undefined;`);
-        data = func();
-      } catch (err) {
-        // If that fails, try to evaluate the entire jsData as an expression
-        // This handles cases where the user just writes an object literal
-        const func = new Function(`return (${jsCode});`);
-        data = func();
-      }
-      
-      // If data is still undefined, throw an error
-      if (data === undefined) {
-        throw new Error('Could not extract data. Make sure to assign a value to the "input" variable or provide a valid JavaScript object.');
-      }
-      
+      // Execute JavaScript code and extract the input variable
+      const func = new Function(`${jsData}; return input;`);
+      const data = func();
       const rendered = ejs.render(ejsTemplate, data);
       setRenderedHtml(rendered);
       setError('');
@@ -243,7 +218,7 @@ const EjsEditor = () => {
                   <div className="flex items-center justify-between p-3 border-b border-editor-border">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <div className="w-3 h-3 bg-accent rounded-full"></div>
-                      Input Data (JavaScript/TypeScript)
+                      Input Data (JavaScript)
                     </h3>
                     <Button 
                       variant="copy" 
@@ -257,7 +232,7 @@ const EjsEditor = () => {
                   <div className="flex-1 relative">
                     <Editor
                       height="100%"
-                      language="typescript"
+                      language="javascript"
                       value={jsData}
                       onChange={(value) => setJsData(value || '')}
                       theme="vs-dark"
