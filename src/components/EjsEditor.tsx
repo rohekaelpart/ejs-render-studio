@@ -3,27 +3,33 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Copy, Eye, Code2, Play, Github } from 'lucide-react';
+import { Copy, Eye, Code2, Play, Github, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as ejs from 'ejs';
 import Editor from '@monaco-editor/react';
 
 // LocalStorage keys
 const STORAGE_KEYS = {
-  JSON_DATA: 'ejsEditor_jsonData',
+  JS_DATA: 'ejsEditor_jsData',
   EJS_TEMPLATE: 'ejsEditor_ejsTemplate',
 };
 
 // Default values
-const DEFAULT_JSON_DATA = `{
-  "title": "Welcome to EJS Editor",
-  "subtitle": "A powerful template engine",
-  "users": [
-    { "name": "Alice", "age": 25 },
-    { "name": "Bob", "age": 30 },
-    { "name": "Charlie", "age": 35 }
+const DEFAULT_JS_DATA = `{
+  title: "Welcome to EJS Editor",
+  subtitle: "A powerful template engine",
+  users: [
+    { name: "Alice", age: 25 },
+    { name: "Bob", age: 30 },
+    { name: "Charlie", age: 35 }
   ],
-  "features": ["Dynamic content", "Loops & conditionals", "Partials support"]
+  features: ["Dynamic content", "Loops & conditionals", "Partials support"],
+  getCurrentTime: () => new Date().toLocaleString(),
+  formatName: (name) => name.toUpperCase(),
+  config: {
+    showBadges: true,
+    theme: "light"
+  }
 }`;
 
 const DEFAULT_EJS_TEMPLATE = `<div class="container">
@@ -93,8 +99,8 @@ const saveToStorage = (key: string, value: string): void => {
 };
 
 const EjsEditor = () => {
-  const [jsonData, setJsonData] = useState(() => 
-    loadFromStorage(STORAGE_KEYS.JSON_DATA, DEFAULT_JSON_DATA)
+  const [jsData, setJsData] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.JS_DATA, DEFAULT_JS_DATA)
   );
 
   const [ejsTemplate, setEjsTemplate] = useState(() => 
@@ -106,10 +112,10 @@ const EjsEditor = () => {
   const [outputMode, setOutputMode] = useState<'preview' | 'code'>('preview');
   const { toast } = useToast();
 
-  // Save to localStorage whenever jsonData or ejsTemplate changes
+  // Save to localStorage whenever jsData or ejsTemplate changes
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.JSON_DATA, jsonData);
-  }, [jsonData]);
+    saveToStorage(STORAGE_KEYS.JS_DATA, jsData);
+  }, [jsData]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.EJS_TEMPLATE, ejsTemplate);
@@ -117,7 +123,8 @@ const EjsEditor = () => {
 
   const renderTemplate = () => {
     try {
-      const data = JSON.parse(jsonData);
+      // Parse JavaScript object using Function constructor for safety
+      const data = new Function(`return ${jsData}`)();
       const rendered = ejs.render(ejsTemplate, data);
       setRenderedHtml(rendered);
       setError('');
@@ -129,7 +136,7 @@ const EjsEditor = () => {
 
   useEffect(() => {
     renderTemplate();
-  }, [jsonData, ejsTemplate]);
+  }, [jsData, ejsTemplate]);
 
   const copyToClipboard = async (content: string, type: string) => {
     try {
@@ -144,6 +151,35 @@ const EjsEditor = () => {
         description: "Please try again",
         variant: "destructive",
       });
+    }
+  };
+
+  const printOutput = () => {
+    if (!renderedHtml) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Print Preview</title>
+            <style>
+              @media print {
+                body { margin: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            ${renderedHtml}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
   };
 
@@ -181,12 +217,12 @@ const EjsEditor = () => {
                   <div className="flex items-center justify-between p-3 border-b border-editor-border">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <div className="w-3 h-3 bg-accent rounded-full"></div>
-                      Input Data (JSON)
+                      Input Data (JavaScript)
                     </h3>
                     <Button 
                       variant="copy" 
                       size="xs"
-                      onClick={() => copyToClipboard(jsonData, 'JSON data')}
+                      onClick={() => copyToClipboard(jsData, 'JavaScript data')}
                     >
                       <Copy className="w-3 h-3" />
                       Copy
@@ -195,9 +231,9 @@ const EjsEditor = () => {
                   <div className="flex-1 relative">
                     <Editor
                       height="100%"
-                      language="json"
-                      value={jsonData}
-                      onChange={(value) => setJsonData(value || '')}
+                      language="javascript"
+                      value={jsData}
+                      onChange={(value) => setJsData(value || '')}
                       theme="vs-dark"
                       options={{
                         minimap: { enabled: false },
@@ -279,15 +315,26 @@ const EjsEditor = () => {
                     </TabsList>
                   </Tabs>
                 </div>
-                <Button 
-                  variant="copy" 
-                  size="xs"
-                  onClick={() => copyToClipboard(renderedHtml, 'Rendered HTML')}
-                  disabled={!renderedHtml}
-                >
-                  <Copy className="w-3 h-3" />
-                  Copy
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="copy" 
+                    size="xs"
+                    onClick={() => copyToClipboard(renderedHtml, 'Rendered HTML')}
+                    disabled={!renderedHtml}
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copy
+                  </Button>
+                  <Button 
+                    variant="editor" 
+                    size="xs"
+                    onClick={printOutput}
+                    disabled={!renderedHtml}
+                  >
+                    <Printer className="w-3 h-3" />
+                    Print
+                  </Button>
+                </div>
               </div>
               
               <div className="flex-1 relative overflow-hidden">
