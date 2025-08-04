@@ -113,6 +113,44 @@ const EjsEditor = () => {
   const [outputMode, setOutputMode] = useState<'preview' | 'code'>('preview');
   const { toast } = useToast();
 
+  // Listen for messages from parent window (when embedded as iframe)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // For development, allow all origins. In production, validate event.origin
+      // if (event.origin !== 'https://your-parent-domain.com') return;
+      
+      const { type, data } = event.data;
+      
+      if (type === 'editor:setData') {
+        if (data.jsData) {
+          setJsData(data.jsData);
+        }
+        if (data.ejsTemplate) {
+          setEjsTemplate(data.ejsTemplate);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    // Notify parent that editor is ready
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'editor:ready' }, '*');
+    }
+
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Send updates to parent window when data changes
+  useEffect(() => {
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'editor:dataChanged',
+        data: { jsData, ejsTemplate }
+      }, '*');
+    }
+  }, [jsData, ejsTemplate]);
+
   // Save to localStorage whenever jsData or ejsTemplate changes
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.JS_DATA, jsData);
