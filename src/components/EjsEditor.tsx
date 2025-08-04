@@ -7,6 +7,7 @@ import { Copy, Eye, Code2, Play, Github, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as ejs from 'ejs';
 import Editor from '@monaco-editor/react';
+import Cheatsheet from './Cheatsheet';
 
 // LocalStorage keys
 const STORAGE_KEYS = {
@@ -199,6 +200,7 @@ const EjsEditor = () => {
           </div>
           <div className="flex items-center gap-3">
             <p className="italic text-sm">All changes saved locally.</p>
+            <Cheatsheet />
             <a href="https://github.com/rohekaelpart/ejs-render-studio" target="_blank" rel="noopener noreferrer" className="hover:text-rose-600">
               <Github className="w-4 h-4 text-muted-foreground" />
             </a>
