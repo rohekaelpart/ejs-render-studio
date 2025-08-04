@@ -218,7 +218,7 @@ const EjsEditor = () => {
                   <div className="flex items-center justify-between p-3 border-b border-editor-border">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <div className="w-3 h-3 bg-accent rounded-full"></div>
-                      Input Data (JavaScript)
+                      Input Data (JavaScript/TypeScript)
                     </h3>
                     <Button 
                       variant="copy" 
@@ -232,7 +232,7 @@ const EjsEditor = () => {
                   <div className="flex-1 relative">
                     <Editor
                       height="100%"
-                      language="javascript"
+                      language="typescript"
                       value={jsData}
                       onChange={(value) => setJsData(value || '')}
                       theme="vs-dark"
