@@ -15,7 +15,7 @@ const STORAGE_KEYS = {
 };
 
 // Default values
-const DEFAULT_JS_DATA = `{
+const DEFAULT_JS_DATA = `const input = {
   title: "Welcome to EJS Editor",
   subtitle: "A powerful template engine",
   users: [
@@ -30,7 +30,7 @@ const DEFAULT_JS_DATA = `{
     showBadges: true,
     theme: "light"
   }
-}`;
+};`;
 
 const DEFAULT_EJS_TEMPLATE = `<div class="container">
   <header>
@@ -123,8 +123,9 @@ const EjsEditor = () => {
 
   const renderTemplate = () => {
     try {
-      // Parse JavaScript object using Function constructor for safety
-      const data = new Function(`return ${jsData}`)();
+      // Execute JavaScript code and extract the input variable
+      const func = new Function(`${jsData}; return input;`);
+      const data = func();
       const rendered = ejs.render(ejsTemplate, data);
       setRenderedHtml(rendered);
       setError('');
