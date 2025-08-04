@@ -123,9 +123,25 @@ const EjsEditor = () => {
 
   const renderTemplate = () => {
     try {
-      // Execute JavaScript code and extract the input variable
-      const func = new Function(`${jsData}; return input;`);
-      const data = func();
+      // Handle both cases: const input = {...} and const input: Type = {...}
+      let data;
+      
+      // First try to execute the code and extract 'input' variable
+      try {
+        const func = new Function(`${jsData}; return typeof input !== 'undefined' ? input : undefined;`);
+        data = func();
+      } catch (err) {
+        // If that fails, try to evaluate the entire jsData as an expression
+        // This handles cases where the user just writes an object literal
+        const func = new Function(`return (${jsData});`);
+        data = func();
+      }
+      
+      // If data is still undefined, throw an error
+      if (data === undefined) {
+        throw new Error('Could not extract data. Make sure to assign a value to the "input" variable or provide a valid JavaScript object.');
+      }
+      
       const rendered = ejs.render(ejsTemplate, data);
       setRenderedHtml(rendered);
       setError('');
